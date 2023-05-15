@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dleplugin>
+	<name>FastCGI Cache purge</name>
+	<description>Плагин для очистки кеша fastCGI</description>
+	<icon></icon>
+	<version></version>
+	<dleversion>15.3</dleversion>
+	<versioncompare>greater</versioncompare>
+	<upgradeurl></upgradeurl>
+	<filedelete>0</filedelete>
+	<needplugin></needplugin>
+	<mnotice>0</mnotice>
+	<mysqlinstall><![CDATA[]]></mysqlinstall>
+	<mysqlupgrade><![CDATA[]]></mysqlupgrade>
+	<mysqlenable><![CDATA[]]></mysqlenable>
+	<mysqldisable><![CDATA[]]></mysqldisable>
+	<mysqldelete><![CDATA[]]></mysqldelete>
+	<phpinstall><![CDATA[]]></phpinstall>
+	<phpupgrade><![CDATA[]]></phpupgrade>
+	<phpenable><![CDATA[]]></phpenable>
+	<phpdisable><![CDATA[]]></phpdisable>
+	<phpdelete><![CDATA[]]></phpdelete>
+	<notice><![CDATA[]]></notice>
+	<file name="engine/inc/include/functions.inc.php">
+		<operation action="after">
+			<searchcode><![CDATA[function clear_cache($cache_areas = false) {
+	global $dlefastcache, $config;
+
+	if( $config['cache_type'] ) {
+		if( $dlefastcache->connection > 0 ) {
+			$dlefastcache->clear( $cache_areas );
+			return true;
+		}
+	}
+
+	if ( $cache_areas ) {
+		if(!is_array($cache_areas)) {
+			$cache_areas = array($cache_areas);
+		}
+	}
+		
+	$fdir = opendir( ENGINE_DIR . '/cache' );
+		
+	while ( $file = readdir( $fdir ) ) {
+		if( $file != '.htaccess' AND !is_dir(ENGINE_DIR . '/cache/' . $file) ) {
+			
+			if( $cache_areas ) {
+				
+				foreach($cache_areas as $cache_area) if( stripos( $file, $cache_area ) === 0 ) @unlink( ENGINE_DIR . '/cache/' . $file );
+			
+			} else {
+				
+				@unlink( ENGINE_DIR . '/cache/' . $file );
+			
+			}
+		}
+	}
+}]]></searchcode>
+			<replacecode><![CDATA[function clear_fastcgi_cache() {
+    $cache_dir = ENGINE_DIR . '/nginx-cache';
+    chmod($cache_dir, 0755);
+
+    if (file_exists($cache_dir) && is_dir($cache_dir)) {
+        $iterator = new RecursiveDirectoryIterator($cache_dir, RecursiveDirectoryIterator::SKIP_DOTS);
+        $files = new RecursiveIteratorIterator($iterator, RecursiveIteratorIterator::CHILD_FIRST);
+
+        foreach ($files as $file) {
+            if ($file->isDir()) {
+                rmdir($file->getRealPath());
+            } else {
+                unlink($file->getRealPath());
+            }
+        }
+    }
+}]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="replace">
+			<searchcode><![CDATA[function clear_all_caches() {
+	global $config;
+	
+	listdir( ENGINE_DIR . '/cache/system/CSS' );
+	listdir( ENGINE_DIR . '/cache/system/HTML' );
+	listdir( ENGINE_DIR . '/cache/system/URI' );
+	listdir( ENGINE_DIR . '/cache/system/plugins' );
+	
+	$fdir = opendir( ENGINE_DIR . '/cache/system/' );
+	while ( $file = readdir( $fdir ) ) {
+		if( $file != '.' AND $file != '..' AND $file != '.htaccess' AND $file != 'cron.php' ) {
+			@unlink( ENGINE_DIR . '/cache/system/' . $file );
+		
+		}
+	}
+	
+	if( $config['cache_type'] ) {
+		$fdir = opendir( ENGINE_DIR . '/cache' );
+		while ( $file = readdir( $fdir ) ) {
+			if( $file != '.htaccess' AND !is_dir($file) ) {
+					@unlink( ENGINE_DIR . '/cache/' . $file );
+			}
+		}
+	}
+	
+	clear_cache();
+	
+	if (function_exists('opcache_reset')) {
+		opcache_reset();
+	}
+
+}]]></searchcode>
+			<replacecode><![CDATA[function clear_all_caches() {
+	global $config;
+	
+	listdir( ENGINE_DIR . '/cache/system/CSS' );
+	listdir( ENGINE_DIR . '/cache/system/HTML' );
+	listdir( ENGINE_DIR . '/cache/system/URI' );
+	listdir( ENGINE_DIR . '/cache/system/plugins' );
+	
+	$fdir = opendir( ENGINE_DIR . '/cache/system/' );
+	while ( $file = readdir( $fdir ) ) {
+		if( $file != '.' AND $file != '..' AND $file != '.htaccess' AND $file != 'cron.php' ) {
+			@unlink( ENGINE_DIR . '/cache/system/' . $file );
+		
+		}
+	}
+	
+	if( $config['cache_type'] ) {
+		$fdir = opendir( ENGINE_DIR . '/cache' );
+		while ( $file = readdir( $fdir ) ) {
+			if( $file != '.htaccess' AND !is_dir($file) ) {
+					@unlink( ENGINE_DIR . '/cache/' . $file );
+			}
+		}
+	}
+	
+	clear_cache();
+	
+	if (function_exists('opcache_reset')) {
+		opcache_reset();
+	}
+
+    clear_fastcgi_cache();
+}]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+	<file name="engine/ajax/editnews.php">
+		<operation action="after">
+			<searchcode><![CDATA[	clear_cache( array( 'news_', 'rss', $cprefix ) );]]></searchcode>
+			<replacecode><![CDATA[    clear_fastcgi_cache();]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+</dleplugin>
